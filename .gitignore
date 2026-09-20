@@ -9,3 +9,7 @@ _optimize-tmp.html
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# 本地便捷启动器（与站点内容无关，不入库）
+dsh-web.cmd
+tools/dsh-web-shortcuts.ps1

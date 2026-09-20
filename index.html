@@ -39,6 +39,8 @@
         <div><dt>收录</dt><dd id="statTotal">—</dd></div>
         <div><dt>立绘</dt><dd id="statFull">—</dd></div>
         <div><dt>作者</dt><dd id="statAuthors">—</dd></div>
+        <div><dt>点赞</dt><dd id="statLikes">—</dd></div>
+        <div><dt>收藏</dt><dd id="statFavs">—</dd></div>
       </dl>
       <div class="board-actions">
         <a class="btn" href="#gallery">进入画廊</a>
@@ -71,6 +73,15 @@
     <div class="toolbar">
       <div class="chips" id="chips" role="group" aria-label="按类型筛选"></div>
       <div class="toolbar-right">
+        <label class="sort">
+          <span class="sr-only">排序方式</span>
+          <select id="sort">
+            <option value="new">最新加入</option>
+            <option value="likes">最多点赞</option>
+            <option value="rating">评分最高</option>
+            <option value="reviews">评论最多</option>
+          </select>
+        </label>
         <label class="search">
           <span class="sr-only">搜索作品或作者</span>
           <input id="search" type="search" placeholder="搜索作品 / 作者" autocomplete="off" spellcheck="false">
@@ -78,6 +89,11 @@
         <span class="count" id="count" aria-live="polite"></span>
       </div>
     </div>
+
+    <p class="mode-note" id="modeNote" hidden>
+      互动数据目前存在<strong>你自己的浏览器</strong>里 —— 点赞、收藏、评分、评论都能用，
+      但别人看不到你的赞。想让所有人共享，按 <code>docs/supabase-setup.md</code> 配置一下即可。
+    </p>
 
     <div class="grid" id="grid"></div>
 
@@ -138,17 +154,67 @@
         <h2 id="lbTitle"></h2>
         <p class="lb-author" id="lbAuthor"></p>
         <ul class="lb-tags" id="lbTags"></ul>
+
+        <!-- 互动：点赞 / 收藏 / 评分 -->
+        <div class="interact">
+          <div class="interact-row">
+            <button type="button" class="act act-like" id="btnLike" aria-pressed="false">
+              <span class="act-icon" aria-hidden="true">♥</span>
+              <span class="act-label">点赞</span>
+              <span class="act-count" id="likeCount">0</span>
+            </button>
+            <button type="button" class="act act-fav" id="btnFav" aria-pressed="false">
+              <span class="act-icon" aria-hidden="true">★</span>
+              <span class="act-label">收藏</span>
+              <span class="act-count" id="favCount">0</span>
+            </button>
+          </div>
+
+          <div class="rate-row">
+            <div class="stars" id="stars" role="radiogroup" aria-label="给这张图评分">
+              <button type="button" class="star" data-score="1" aria-label="1 星">★</button>
+              <button type="button" class="star" data-score="2" aria-label="2 星">★</button>
+              <button type="button" class="star" data-score="3" aria-label="3 星">★</button>
+              <button type="button" class="star" data-score="4" aria-label="4 星">★</button>
+              <button type="button" class="star" data-score="5" aria-label="5 星">★</button>
+            </div>
+            <span class="rate-summary" id="rateSummary">还没有评分</span>
+          </div>
+        </div>
+
         <div class="lb-actions">
           <a id="lbOrig" class="btn" href="#" target="_blank" rel="noopener noreferrer" hidden>查看原帖</a>
           <a id="lbDown" class="btn btn-ghost" href="#" download>下载原图</a>
         </div>
+
+        <!-- 短评 -->
+        <section class="reviews">
+          <h3 class="reviews-title">短评 <span id="reviewCount">0</span></h3>
+
+          <form class="review-form" id="reviewForm">
+            <input type="text" id="reviewName" class="review-name" maxlength="24"
+                   placeholder="昵称（可不填）" autocomplete="nickname">
+            <textarea id="reviewText" class="review-text" maxlength="200" rows="2"
+                      placeholder="说点什么……（最多 200 字）" required></textarea>
+            <div class="review-form-foot">
+              <span class="review-len" id="reviewLen">0 / 200</span>
+              <button type="submit" class="btn btn-small" id="reviewSubmit">发表</button>
+            </div>
+          </form>
+
+          <ul class="review-list" id="reviewList"></ul>
+          <p class="review-empty" id="reviewEmpty">还没有人评论，来做第一个。</p>
+        </section>
+
         <p class="lb-index" id="lbIndex"></p>
       </figcaption>
     </figure>
   </div>
 </div>
 
+<script src="data/config.js"></script>
 <script src="data/works.js"></script>
+<script src="assets/js/store.js"></script>
 <script src="assets/js/main.js"></script>
 </body>
 </html>
