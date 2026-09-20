@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>缩略图生成器</title>
+</head>
+<body>
+<pre id="log">准备中…</pre>
+<script id="conf" type="application/json">__CONF__</script>
+<script>
+/* ===========================================================
+   图片尺寸生成器（在浏览器里跑）
+   由 tools/make-thumbs.mjs 通过无头 Chrome 打开，结果写回磁盘。
+   为每张原图生成两档：
+     thumb → 列表用（小，列表秒开）
+     hero  → 首屏主视觉用（中，清晰但不拖慢首屏）
+   =========================================================== */
+const CONF = JSON.parse(document.getElementById('conf').textContent);
+const log = document.getElementById('log');
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+function loadImage(src) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
+}
+
+function render(img, targetW, quality) {
+  const scale = Math.min(1, targetW / img.naturalWidth);
+  const w = Math.max(1, Math.round(img.naturalWidth * scale));
+  const h = Math.max(1, Math.round(img.naturalHeight * scale));
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const g = c.getContext('2d');
+  g.imageSmoothingQuality = 'high';
+  g.drawImage(img, 0, 0, w, h);
+  const url = c.toDataURL('image/jpeg', quality);
+  return { w, h, b64: url.slice(url.indexOf(',') + 1) };
+}
+
+(async () => {
+  const results = [];
+  for (const name of CONF.files) {
+    const img = await loadImage('assets/works/' + name);
+    if (!img || !img.naturalWidth) { log.textContent += `\n跳过 ${name}（读不出）`; continue; }
+
+    for (const [kind, targetW, quality] of [['thumb', CONF.width, CONF.quality], ['hero', CONF.heroWidth, CONF.heroQuality]]) {
+      const r = render(img, targetW, quality);
+      const kb = Math.round((r.b64.length * 3) / 4 / 1024);
+      results.push(`${kind}|${name}|${r.w}|${r.h}|${r.b64}`);
+      log.textContent += `\n${kind.padEnd(5)} ${name} → ${r.w}x${r.h}  ${kb}KB`;
+    }
+    await sleep(0); // 让出主线程
+  }
+  document.title = 'DONE';
+  document.body.textContent = '###' + results.join('\n') + '###';
+})();
+</script>
+</body>
+</html>

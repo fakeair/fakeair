@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><title>optimize</title></head>
+<body>
+<pre id="log">准备中…</pre>
+<script id="conf" type="application/json">__CONF__</script>
+<script>
+/* 用浏览器 canvas 把原图重新编码成更小的格式（不缩尺寸，只压体积） */
+const CONF = JSON.parse(document.getElementById('conf').textContent);
+const log = document.getElementById('log');
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+function loadImage(src) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
+}
+
+function encode(img, type, quality) {
+  const c = document.createElement('canvas');
+  c.width = img.naturalWidth;
+  c.height = img.naturalHeight;
+  const g = c.getContext('2d');
+  // 白底，防止任何潜在透明像素变黑
+  g.fillStyle = '#ffffff';
+  g.fillRect(0, 0, c.width, c.height);
+  g.drawImage(img, 0, 0);
+  const url = c.toDataURL(type, quality);
+  return url.slice(url.indexOf(',') + 1);
+}
+
+(async () => {
+  const results = [];
+  for (const name of CONF.files) {
+    const img = await loadImage('assets/works/' + name);
+    if (!img || !img.naturalWidth) { log.textContent += `\n跳过 ${name}`; continue; }
+
+    const out = [`原图 ${name} ${Math.round(CONF.original[name] / 1024)}KB  ${img.naturalWidth}x${img.naturalHeight}`];
+    for (const [fmt, type, q] of [['webp', 'image/webp', CONF.webpQuality], ['jpeg', 'image/jpeg', CONF.jpegQuality]]) {
+      const b64 = encode(img, type, q);
+      const kb = Math.round((b64.length * 3) / 4 / 1024);
+      results.push(`${fmt}|${name}|${b64}`);
+      out.push(`  → ${fmt} q${q}  ${kb}KB`);
+    }
+    log.textContent += '\n' + out.join('\n');
+    await sleep(0);
+  }
+  document.title = 'DONE';
+  document.body.textContent = '###' + results.join('\n') + '###';
+})();
+</script>
+</body>
+</html>
