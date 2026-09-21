@@ -362,6 +362,44 @@
       const mine = await this.#mine();
       return [...mine.favorites];
     }
+
+    /* ---------- 访客上传（表结构见 docs/supabase-uploads.sql） ---------- */
+
+    /** 列出所有未隐藏的投稿，转成和 data/works.js 同样的结构 */
+    async listUploads() {
+      const rows = await this.#req(
+        'luka_uploads?select=work_id,title,author,tags,src,thumb,w,h,created_at' +
+        '&hidden=eq.false&order=created_at.desc&limit=500',
+      );
+      return (rows || []).map((r) => ({
+        id: r.work_id,
+        title: r.title,
+        author: r.author || '匿名访客',
+        tags: Array.isArray(r.tags) && r.tags.length ? r.tags : ['投稿'],
+        src: r.src,
+        thumb: r.thumb || r.src,
+        hero: r.thumb || r.src,
+        w: Number(r.w) || 4,
+        h: Number(r.h) || 3,
+        uploaded: true,
+        mtime: Date.parse(r.created_at) || 0,
+      }));
+    }
+
+    /** 登记一条投稿。文件由 assets/js/upload.js 先传到 Storage */
+    async addUpload(row) {
+      await this.#insert('luka_uploads', {
+        work_id: row.work_id,
+        title: String(row.title).trim().slice(0, 60),
+        author: String(row.author || '').trim().slice(0, 24) || null,
+        tags: row.tags || [],
+        src: row.src,
+        thumb: row.thumb || null,
+        w: row.w,
+        h: row.h,
+        visitor_id: this.visitor,
+      });
+    }
   }
 
   /* =========================================================

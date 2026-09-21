@@ -595,6 +595,106 @@ main { max-width: var(--maxw); margin: 0 auto; padding: 0 24px 80px; }
 .review-body { margin: 0; font-size: 13px; line-height: 1.65; color: var(--text-dim); overflow-wrap: anywhere; }
 .review-empty { margin: 0; font-size: 12.5px; color: var(--text-faint); }
 
+/* ---------------- 上传弹窗 ---------------- */
+
+.upload-modal:not([hidden]) { display: grid; }
+.upload-modal { position: fixed; inset: 0; z-index: 70; place-items: center; padding: 20px; }
+
+.up-backdrop {
+  position: absolute; inset: 0;
+  background: rgba(5, 4, 9, 0.88);
+  backdrop-filter: blur(10px);
+  animation: fade-in 0.25s var(--ease);
+}
+
+.up-panel {
+  position: relative; z-index: 1;
+  width: min(560px, 94vw); max-height: 92vh; overflow-y: auto;
+  padding: 26px 26px 22px;
+  border-radius: 18px;
+  background: var(--surface); border: 1px solid var(--line-strong);
+  box-shadow: 0 40px 90px -30px rgba(0, 0, 0, 0.95);
+  animation: panel-in 0.3s var(--ease);
+}
+
+.up-title { font-size: 20px; }
+.up-sub { margin: 10px 0 20px; font-size: 13px; line-height: 1.8; color: var(--text-dim); }
+.up-sub strong { color: var(--pink); font-weight: 600; }
+
+.up-close {
+  position: absolute; top: 14px; right: 14px;
+  width: 32px; height: 32px; border-radius: 50%; cursor: pointer;
+  border: 1px solid var(--line-strong); background: rgba(14, 13, 20, 0.8);
+  color: var(--text); font-size: 13px; line-height: 1;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+.up-close:hover { background: var(--pink); color: #200a14; border-color: transparent; }
+
+.up-form { display: flex; flex-direction: column; gap: 14px; }
+.up-field { display: flex; flex-direction: column; gap: 7px; }
+.up-label { font-size: 12.5px; color: var(--text-dim); letter-spacing: 0.03em; }
+.up-label b { color: var(--pink); font-weight: 600; }
+.up-row { display: flex; gap: 12px; }
+.up-row .up-field { flex: 1; }
+.up-field-narrow { max-width: 120px; }
+
+.up-form input[type="text"], .up-form select {
+  width: 100%; padding: 10px 13px; border-radius: 10px;
+  border: 1px solid var(--line); background: var(--bg-soft);
+  color: var(--text); font: inherit; font-size: 14px;
+}
+.up-form input[type="text"]::placeholder { color: var(--text-faint); }
+.up-form input[type="text"]:focus, .up-form select:focus {
+  outline: none; border-color: var(--pink); background: var(--surface-2);
+}
+
+.up-form input[type="file"] {
+  padding: 12px; border-radius: 10px; cursor: pointer;
+  border: 1px dashed var(--line-strong); background: var(--bg-soft);
+  color: var(--text-dim); font: inherit; font-size: 13px;
+}
+.up-form input[type="file"]::file-selector-button {
+  margin-right: 12px; padding: 7px 14px; border-radius: 999px; cursor: pointer;
+  border: 0; background: linear-gradient(120deg, var(--pink), var(--pink-soft));
+  color: #200a14; font: inherit; font-size: 13px; font-weight: 600;
+}
+
+.up-fileinfo { font-size: 12px; color: var(--text-faint); line-height: 1.7; }
+.up-fileinfo.up-error, .up-status.up-error { color: var(--pink-soft); }
+
+.up-preview {
+  width: 100%; max-height: 260px; object-fit: contain;
+  border-radius: 12px; border: 1px solid var(--line);
+  background: var(--bg-soft);
+}
+
+.up-progress { height: 5px; border-radius: 999px; overflow: hidden; background: rgba(255, 255, 255, 0.08); }
+.up-progress-fill {
+  height: 100%; width: 0; border-radius: 999px;
+  background: linear-gradient(90deg, var(--pink), var(--cyan));
+  transition: width 0.3s var(--ease);
+}
+
+.up-status { margin: 0; font-size: 13px; color: var(--text-dim); line-height: 1.7; }
+.up-status.up-busy { color: var(--cyan); }
+.up-status.up-ok { color: #7ef0b0; }
+
+.up-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 4px; }
+
+.nav-btn-strong {
+  color: #200a14; font-weight: 600;
+  border-color: transparent;
+  background: linear-gradient(120deg, var(--pink), var(--pink-soft));
+}
+.nav-btn-strong:hover { color: #200a14; border-color: transparent; filter: brightness(1.08); }
+
+/* 投稿角标：和站内固定作品区分开 */
+.card-uploaded {
+  position: absolute; bottom: 10px; left: 10px;
+  padding: 2px 9px; border-radius: 999px; font-size: 10.5px;
+  background: rgba(92, 225, 230, 0.92); color: #06282a; font-weight: 600;
+}
+
 .lb-close {
   position: absolute; top: 12px; right: 12px; z-index: 3;
   width: 34px; height: 34px; border-radius: 50%; cursor: pointer;

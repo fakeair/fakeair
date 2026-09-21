@@ -21,6 +21,7 @@
   <nav class="site-nav">
     <a href="#gallery">画廊</a>
     <a href="#about">关于</a>
+    <button id="uploadBtn" class="nav-btn nav-btn-strong" type="button" hidden>＋ 上传</button>
     <button id="randomBtn" class="nav-btn" type="button" title="随机看一张 (R)">随机</button>
   </nav>
 </header>
@@ -38,6 +39,7 @@
       <dl class="board-stats">
         <div><dt>收录</dt><dd id="statTotal">—</dd></div>
         <div><dt>立绘</dt><dd id="statFull">—</dd></div>
+        <div><dt>投稿</dt><dd id="statUploads">—</dd></div>
         <div><dt>作者</dt><dd id="statAuthors">—</dd></div>
         <div><dt>点赞</dt><dd id="statLikes">—</dd></div>
         <div><dt>收藏</dt><dd id="statFavs">—</dd></div>
@@ -212,9 +214,65 @@
   </div>
 </div>
 
+<!-- ========== 上传弹窗 ========== -->
+<div class="upload-modal" id="uploadModal" hidden>
+  <div class="up-backdrop" data-up-close></div>
+  <div class="up-panel" role="dialog" aria-modal="true" aria-label="上传作品">
+    <button class="up-close" type="button" data-up-close aria-label="关闭 (Esc)">✕</button>
+
+    <h2 class="up-title">上传你的流歌图片</h2>
+    <p class="up-sub">
+      提交后会<strong>立即展示</strong>在画廊里，并署上你填的名字。
+      请确认你有权公开这张图；站长为维护需要可能会下架内容。
+    </p>
+
+    <form id="upForm" class="up-form">
+      <label class="up-field">
+        <span class="up-label">选择图片</span>
+        <input type="file" id="upFile" accept="image/png,image/jpeg,image/webp,image/gif,image/avif" required>
+        <span class="up-fileinfo" id="upFileInfo"></span>
+      </label>
+
+      <img class="up-preview" id="upPreview" alt="预览" hidden>
+
+      <label class="up-field">
+        <span class="up-label">作品名 <b>*</b></span>
+        <input type="text" id="upTitle" maxlength="60" required placeholder="例如：夏日巡音">
+      </label>
+
+      <div class="up-row">
+        <label class="up-field">
+          <span class="up-label">署名 <b>*</b></span>
+          <input type="text" id="upAuthor" maxlength="24" required placeholder="你的昵称（想匿名就写「匿名」）">
+        </label>
+        <label class="up-field up-field-narrow">
+          <span class="up-label">分类</span>
+          <select id="upKind">
+            <option value="立绘">立绘</option>
+            <option value="半身">半身</option>
+            <option value="头像">头像</option>
+            <option value="横图">横图</option>
+            <option value="同人">同人</option>
+            <option value="壁纸">壁纸</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="up-progress" id="upBar" hidden><div class="up-progress-fill" id="upBarFill"></div></div>
+      <p class="up-status" id="upStatus" hidden></p>
+
+      <div class="up-actions">
+        <button type="button" class="btn btn-ghost" data-up-close>取消</button>
+        <button type="submit" class="btn" id="upSubmit">上传并展示</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <script src="data/config.js"></script>
 <script src="data/works.js"></script>
 <script src="assets/js/store.js"></script>
+<script src="assets/js/upload.js"></script>
 <script src="assets/js/main.js"></script>
 </body>
 </html>

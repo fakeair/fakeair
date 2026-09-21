@@ -6,10 +6,13 @@
 (function () {
   'use strict';
 
-  const WORKS = Array.isArray(window.WORKS) ? window.WORKS.slice() : [];
+  // 注意：用 let —— 访客投稿会在运行时合并进来
+  let WORKS = Array.isArray(window.WORKS) ? window.WORKS.slice() : [];
+  const STATIC_COUNT = WORKS.length;
   const IS_SAMPLE = window.WORKS_IS_SAMPLE === true || WORKS.some((w) => /^assets\/samples\//.test(w.src || ''));
   const ALL = '__all__';
   const FAV = '__favorites__';
+  const UPLOADED = '__uploaded__';
 
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -74,6 +77,7 @@
   let store = null;   // 互动数据存储（本机 或 共享）
   let stats = {};     // { workId: { likes, liked, favorites, ratingAvg, ... } }
   let degraded = false;
+  let uploadsReady = false; // 投稿功能是否可用（表建好且读得到）
 
   /* ---------- 工具 ---------- */
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => (
@@ -194,6 +198,11 @@
     if (likesEl) likesEl.textContent = String(totalLikes);
     const favEl = $('#statFavs');
     if (favEl) favEl.textContent = String(totalFavs);
+    const upEl = $('#statUploads');
+    if (upEl) upEl.textContent = String(WORKS.filter((w) => w.uploaded).length);
+    // 只有配了共享后端、且投稿表可用时，才显示上传入口
+    const upBtn = $('#uploadBtn');
+    if (upBtn) upBtn.hidden = !(store && store.mode === 'shared' && uploadsReady && !degraded);
   }
 
   /* ---------- 标签栏 ---------- */
@@ -221,6 +230,7 @@
     chipsBox.textContent = '';
     chipsBox.append(make(ALL, '全部'));
     for (const tag of ordered) chipsBox.append(make(tag, tag));
+    if (WORKS.some((w) => w.uploaded)) chipsBox.append(make(UPLOADED, '访客投稿'));
     chipsBox.append(make(FAV, '♥ 我的收藏', 'chip-fav'));
   }
 
@@ -235,6 +245,8 @@
   function matches(work) {
     if (state.tag === FAV) {
       if (!statOf(work.id).favorited) return false;
+    } else if (state.tag === UPLOADED) {
+      if (!work.uploaded) return false;
     } else if (state.tag !== ALL && !(work.tags || []).includes(state.tag)) {
       return false;
     }
@@ -278,6 +290,7 @@
         <img src="${esc(work.thumb || work.src)}" data-reveal="up" alt="${esc(work.title || '巡音流歌')}"
              loading="lazy" decoding="async" draggable="false">
         ${kind ? `<span class="card-kind">${esc(kind)}</span>` : ''}
+        ${work.uploaded ? '<span class="card-uploaded">投稿</span>' : ''}
         <span class="card-favflag" ${s.favorited ? '' : 'hidden'} title="已收藏" aria-hidden="true">★</span>
       </div>
       <div class="card-bar${degraded ? ' is-off' : ''}">
@@ -417,12 +430,12 @@
     for (const el of $$('.mini-like, .mini-fav, #btnLike, #btnFav, .star, #reviewSubmit')) el.disabled = true;
   }
 
-  /** 统一处理 store 异常：属于「后端不可用」就降级，否则只弹一次提示 */
+  /** 统一处理 store 异常：只有「密钥/权限」问题才算后端不可用，其余只提示 */
   function handleStoreError(err) {
     const msg = (err && err.message) ? err.message : '网络或配置问题';
-    // 只把「配置 / 权限 / 端点」类错误当成不可用；
-    // 暂时性网络抖动、频率限制（429）只提示，不影响继续操作。
-    const fatal = err && (err.status === 401 || err.status === 403 || err.status === 404);
+    // 401/403 = 密钥失效或权限不足，这类问题不会自愈，直接降级并说明；
+    // 404（例如上传功能还没建表）、409、429、网络抖动都只提示，不影响继续浏览。
+    const fatal = err && (err.status === 401 || err.status === 403);
     if (fatal && store && store.mode === 'shared') degrade(msg);
     else flashError(err);
   }
@@ -766,11 +779,15 @@
         toggleFavorite: async () => null,
         setRating: async () => null,
         addReview: async () => [],
+        listUploads: async () => [],
       };
       degrade('存储不可用');
     }
     if (store.mode === 'local') modeNote.hidden = false;
     if (store.brokenReason) degrade(store.brokenReason);
+
+    // 访客投稿（来自 Supabase 的 luka_uploads），和站内固定作品合并展示
+    await loadUploads();
 
     try {
       await refreshStats();
@@ -781,6 +798,27 @@
     }
 
     try { reviewName.value = localStorage.getItem('luka-gallery:nickname') || ''; } catch { /* 忽略 */ }
+
+    if (window.GalleryUpload) {
+      window.GalleryUpload.init();
+      const upBtn = $('#uploadBtn');
+      if (upBtn) {
+        upBtn.addEventListener('click', () => {
+          window.GalleryUpload.open(store, async (newId) => {
+            await loadUploads();
+            buildChips();
+            render();
+            updateStats();
+            const el = grid.querySelector(`.card[data-id="${cssEscape(newId)}"]`);
+            if (el) {
+              el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+              state.lastFocus = el;
+              openByCard(el);
+            }
+          });
+        });
+      }
+    }
 
     buildChips();
     render();
@@ -800,6 +838,26 @@
       if (lb.hidden) openFromHash();
     });
     openFromHash();
+  }
+
+  /** 拉取访客投稿并与站内作品合并（投稿排在最前，因为是最新的） */
+  async function loadUploads() {
+    const base = Array.isArray(window.WORKS) ? window.WORKS.slice() : [];
+    uploadsReady = false;
+    if (!store || store.mode !== 'shared' || typeof store.listUploads !== 'function') {
+      WORKS = base;
+      return;
+    }
+    try {
+      const ups = await store.listUploads();
+      WORKS = [...ups, ...base];
+      uploadsReady = true;
+    } catch (err) {
+      // 投稿表还没建（docs/supabase-uploads.sql 没跑）或其他读取问题：
+      // 画廊主体照常，只是不显示上传入口。
+      console.warn('[gallery] 投稿列表不可用：', err && err.message);
+      WORKS = base;
+    }
   }
 
   boot();
