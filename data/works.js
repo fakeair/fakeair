@@ -29,7 +29,7 @@ window.WORKS = [
     hero: "assets/hero/luka-08.jpg",
     w: 1728, h: 2304,
     title: "聚光灯下",
-    author: "豆包 AI 生成",
+    author: "fakeair",
     tags: ["立绘"],
   },
   {
@@ -39,7 +39,7 @@ window.WORKS = [
     hero: "assets/hero/luka-07.jpg",
     w: 1728, h: 2304,
     title: "霓虹雨夜",
-    author: "豆包 AI 生成",
+    author: "fakeair",
     tags: ["立绘"],
   },
   {
@@ -49,7 +49,7 @@ window.WORKS = [
     hero: "assets/hero/luka-06.jpg",
     w: 1728, h: 2304,
     title: "星间气泡",
-    author: "豆包 AI 生成",
+    author: "fakeair",
     tags: ["立绘"],
   },
   {
@@ -59,7 +59,7 @@ window.WORKS = [
     hero: "assets/hero/luka-05.jpg",
     w: 1728, h: 2304,
     title: "白厅回眸",
-    author: "豆包 AI 生成",
+    author: "fakeair",
     tags: ["立绘"],
   },
   {
@@ -69,7 +69,7 @@ window.WORKS = [
     hero: "assets/hero/luka-04.jpg",
     w: 1728, h: 2304,
     title: "镜前",
-    author: "豆包 AI 生成",
+    author: "fakeair",
     tags: ["立绘"],
   },
   {
@@ -79,7 +79,7 @@ window.WORKS = [
     hero: "assets/hero/luka-03.jpg",
     w: 1728, h: 2304,
     title: "林间微光",
-    author: "豆包 AI 生成",
+    author: "fakeair",
     tags: ["立绘"],
   },
   {
@@ -89,7 +89,7 @@ window.WORKS = [
     hero: "assets/hero/luka-02.jpg",
     w: 1728, h: 2304,
     title: "录音室",
-    author: "豆包 AI 生成",
+    author: "fakeair",
     tags: ["立绘"],
   },
   {
@@ -99,7 +99,7 @@ window.WORKS = [
     hero: "assets/hero/luka-01.jpg",
     w: 1728, h: 2304,
     title: "落日海岸",
-    author: "豆包 AI 生成",
+    author: "fakeair",
     tags: ["立绘"],
   },
   {
@@ -109,7 +109,7 @@ window.WORKS = [
     hero: "assets/hero/collab-02.jpg",
     w: 2048, h: 2048,
     title: "立牌合照",
-    author: "AI 生成合成",
+    author: "fakeair",
     tags: ["头像"],
   },
   {
@@ -119,7 +119,7 @@ window.WORKS = [
     hero: "assets/hero/collab-01.jpg",
     w: 1097, h: 1434,
     title: "贴纸合影",
-    author: "AI 生成合成",
+    author: "fakeair",
     tags: ["立绘"],
   },
 ];
