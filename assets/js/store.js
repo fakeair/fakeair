@@ -206,20 +206,28 @@
       return out;
     }
 
-    /** 当前访客自己的赞 / 收藏 / 评分 */
+    /**
+     * 当前访客自己的赞 / 收藏 / 评分。
+     *
+     * 这里刻意**直接查三张基础表**，而不是用 schema 里的 luka_my_state 视图：
+     * 那个视图没有暴露 visitor_id 列，没法按访客过滤（会被 PostgREST 拒绝：
+     * 「column luka_my_state.visitor_id does not exist」），而且不带过滤查会
+     * 把**所有访客**的数据一起返回。三个并行请求换正确性，值得。
+     */
     async #mine() {
-      const rows = await this.#req(
-        `luka_my_state?select=work_id,liked,favorited,my_score&visitor_id=eq.${encodeURIComponent(this.visitor)}`,
+      const q = (table, cols) => this.#req(
+        `${table}?select=${cols}&visitor_id=eq.${encodeURIComponent(this.visitor)}`,
       );
-      const likes = new Set();
-      const favorites = new Set();
-      const ratings = {};
-      for (const r of rows || []) {
-        if (r.liked) likes.add(r.work_id);
-        if (r.favorited) favorites.add(r.work_id);
-        if (r.my_score) ratings[r.work_id] = Number(r.my_score);
-      }
-      return { likes, favorites, ratings };
+      const [likes, favs, ratings] = await Promise.all([
+        q('luka_likes', 'work_id'),
+        q('luka_favorites', 'work_id'),
+        q('luka_ratings', 'work_id,score'),
+      ]);
+      return {
+        likes: new Set((likes || []).map((r) => r.work_id)),
+        favorites: new Set((favs || []).map((r) => r.work_id)),
+        ratings: Object.fromEntries((ratings || []).map((r) => [r.work_id, Number(r.score)])),
+      };
     }
 
     async getStats() {
@@ -292,11 +300,13 @@
 
     /** 单张图的最新统计（切换后调用，保证卡片数字准确） */
     async getOne(id) {
-      const rows = await this.#req(
-        `luka_work_stats?select=like_count,favorite_count,rating_count,rating_avg,comment_count&work_id=eq.${encodeURIComponent(id)}`,
-      );
+      const [rows, mine] = await Promise.all([
+        this.#req(
+          `luka_work_stats?select=like_count,favorite_count,rating_count,rating_avg,comment_count&work_id=eq.${encodeURIComponent(id)}`,
+        ),
+        this.#mine(),
+      ]);
       const r = rows && rows[0];
-      const mine = await this.#mine();
       return {
         likes: r ? Number(r.like_count) || 0 : 0,
         favorites: r ? Number(r.favorite_count) || 0 : 0,

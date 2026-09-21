@@ -1,3 +1,10 @@
+// ===========================================================================
+//  ⚠️ 这是给**浏览器**用的配置文件，不是用来运行的脚本。
+//     请勿双击本文件 —— Windows 会把它交给「Windows Script Host」执行并报错
+//     （那个报错可以忽略，文件本身没有问题）。
+//     要编辑它：右键 → 打开方式 → 记事本，或用 VS Code。
+//     改完保存，然后**刷新浏览器页面**即可生效。
+// ===========================================================================
 /**
  * 后端配置（点赞 / 收藏 / 评分 / 短评 的共享存储）
  * -----------------------------------------------------------
@@ -10,13 +17,13 @@
  * 然后把下面两行填上即可 —— 刷新页面就会自动切换，代码不用改。
  *
  *   url:     形如 https://abcdefghijklmn.supabase.co
- *   anonKey: 形如 eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9....
+ *   anonKey: 形如 sb_publishable_xxxxxxxx（旧的 eyJ... 开头 JWT 也能用，2026 年底弃用）
  *
  * 注意：anonKey 是设计上就要公开在客户端的（Supabase 的公开密钥），
  * 数据安全靠数据库的行级安全策略（RLS）保证，不要往这里放
  * service_role key —— 那个是管理员密钥，绝不能进前端。
  */
 window.GALLERY_BACKEND = {
-  url: '',
-  anonKey: '',
+  url: 'https://vyoezfqnwocijvgmiywk.supabase.co',
+  anonKey: 'sb_publishable_EB6cvS24P4p5DJ9aBYBvDg_38tpZ_MN',
 };

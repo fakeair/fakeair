@@ -221,8 +221,8 @@ left join public.luka_favorites f on f.work_id = m.work_id
 left join public.luka_ratings   r on r.work_id = m.work_id;
 
 comment on view public.luka_my_state is
-  '每张作品的互动明细（未按访客过滤）。'
-  '前端必须带 ?visitor_id=eq.<uuid> 才能得到「我的」状态。';
+  '【有缺陷，前端不使用】未暴露 visitor_id、也未按访客过滤，'
+  '不带过滤查询会返回所有访客的数据。前端改为直接查三张基础表。';
 
 revoke all on public.luka_likes        from anon, authenticated;
 

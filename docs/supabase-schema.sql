@@ -302,10 +302,32 @@ comment on view public.luka_work_stats is
 
 -- ---------------------------------------------------------------------------
 -- 8. 访客自己的互动：一次查出「我赞过什么 / 收藏过什么 / 我给过几分」
---    用法：GET /rest/v1/luka_my_state?visitor_id=eq.<uuid>
 --
---    实现方式：先取出「该访客互动过的 work_id」集合，再左连接三张表。
---    比三表 full join 更清晰，也不会把别人的行漏出来。
+--    ⚠️⚠️ 这个视图有缺陷，本项目的前端**不使用它**（见下方说明）。
+--        保留定义只是为了让历史 SQL 能重复执行，以及记录这个坑。
+--
+--    实测发现的两个问题（2026-09 在真实项目上验证）：
+--      1. 视图**没有暴露 visitor_id 列**，所以
+--         GET /luka_my_state?visitor_id=eq.<uuid>
+--         会被 PostgREST 拒绝：42703 column luka_my_state.visitor_id does not exist
+--         → 按访客过滤根本无法工作。
+--      2. 下面三个 left join 只按 work_id 关联，**没有带 visitor_id 条件**，
+--         且 with 里也没有按访客过滤。结果是：不带过滤查询会返回
+--         **所有访客**的互动记录混在一起 —— 每个人都能看到别人的点赞/收藏。
+--
+--    前端 assets/js/store.js 的做法：绕开这个视图，直接并行查三张基础表：
+--         GET /luka_likes?select=work_id&visitor_id=eq.<uuid>
+--         GET /luka_favorites?select=work_id&visitor_id=eq.<uuid>
+--         GET /luka_ratings?select=work_id,score&visitor_id=eq.<uuid>
+--    三个请求换来正确性与隔离，对一个小站完全划算。
+--
+--    想修好这个视图的话，把 with 里的 mine 改成带访客参数的集合，
+--    并在 join 上补 visitor_id 条件；但 PostgREST 不能把查询参数传进视图，
+--    所以更现实的方案是写成 RPC 函数（接收 p_visitor uuid）：
+--
+--      create function public.luka_my_state_for(p_visitor uuid) ...
+--
+--    本项目没做这一步，因为直接查基础表已经够用且更直观。
 -- ---------------------------------------------------------------------------
 
 create view public.luka_my_state
@@ -328,8 +350,8 @@ left join public.luka_favorites f on f.work_id = m.work_id
 left join public.luka_ratings   r on r.work_id = m.work_id;
 
 comment on view public.luka_my_state is
-  '每张作品的互动明细（未按访客过滤）。'
-  '前端必须带 ?visitor_id=eq.<uuid> 才能得到「我的」状态。';
+  '【有缺陷，前端不使用】未暴露 visitor_id、也未按访客过滤，'
+  '不带过滤查询会返回所有访客的数据。前端改为直接查三张基础表。';
 
 
 -- ============================================================================
