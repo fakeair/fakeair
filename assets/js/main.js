@@ -536,6 +536,10 @@
         ${work.uploaded ? '<span class="card-uploaded">投稿</span>' : ''}
         <span class="card-favflag" ${s.favorited ? '' : 'hidden'} title="已收藏" aria-hidden="true">★</span>
       </div>
+      <div class="card-caption">
+        <h3 class="card-title" title="${esc(work.title || '未命名')}">${esc(work.title || '未命名')}</h3>
+        <p class="card-author" title="${esc(work.author || '作者未署名')}">${esc(work.author || '作者未署名')}</p>
+      </div>
       <div class="card-bar${degraded ? ' is-off' : ''}">
         <button type="button" class="mini mini-like" data-act="like" aria-pressed="${s.liked}"${off}
                 aria-label="点赞：${esc(work.title || '')}" title="点赞">
@@ -549,10 +553,6 @@
           <span aria-hidden="true">☆</span><b>${formatAvg(s.ratingAvg)}</b>
           <i>${s.ratingCount ? `(${s.ratingCount})` : ''}</i>
         </span>
-      </div>
-      <div class="card-overlay">
-        <h3 class="card-title">${esc(work.title || '未命名')}</h3>
-        <p class="card-author">${esc(work.author || '作者未署名')}</p>
       </div>`;
 
     const img = $('img', el);
