@@ -222,9 +222,29 @@ main { max-width: var(--maxw); margin: 0 auto; padding: 0 24px 80px; }
 }
 @keyframes shimmer { to { background-position: -120% 0; } }
 
-.board-figure figcaption {
-  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
-  margin-top: 14px; font-size: 14px; font-weight: 600;
+/* 主视觉下方的信息条：作品名 + 作者署名（署名要显眼，不能只是一行小灰字） */
+.board-caption {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap;
+  margin-top: 14px;
+}
+.board-name { display: flex; align-items: baseline; gap: 8px; min-width: 0; flex: 1; }
+.board-title {
+  font-size: 15.5px; font-weight: 600; color: var(--text);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+/* 「作者」标签弱化，让后面的名字更突出 */
+.board-by {
+  flex: none;
+  font-size: 11px; letter-spacing: 0.08em;
+  color: var(--text-faint);
+  padding: 1px 7px; border-radius: 999px;
+  border: 1px solid var(--line);
+}
+.board-meta {
+  flex: none;
+  font-size: 12.5px; color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
 }
 
 /* 左右切换箭头：以 .board-frame 为定位容器，所以 top:50% 正好是图片正中 */
@@ -253,7 +273,10 @@ main { max-width: var(--maxw); margin: 0 auto; padding: 0 24px 80px; }
 }
 .board-prev { left: 14px; }
 .board-next { right: 14px; }
-.board-author { font-size: 12.5px; font-weight: 400; color: var(--text-faint); }
+.board-author {
+  font-size: 14px; font-weight: 600; color: var(--pink-soft);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
 
 /* ---------------- 按钮 ---------------- */
 

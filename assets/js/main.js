@@ -385,12 +385,20 @@
     boardLink.dataset.id = work.id;
     boardLink.setAttribute('aria-label', `查看大图：${work.title || '未命名'}`);
     boardTitle.textContent = work.title || '未命名';
+    boardTitle.title = work.title || '未命名';
+
+    // 署名单独一行右侧显示，比塞进小灰字里更容易看到
     const s = statOf(work.id);
-    boardAuthor.textContent = [
-      work.author || '作者未署名',
-      `♥ ${s.likes}`,
-      s.ratingCount ? `★ ${formatAvg(s.ratingAvg)}` : '',
-    ].filter(Boolean).join(' · ');
+    boardAuthor.textContent = work.author || '作者未署名';
+    boardAuthor.title = work.author || '作者未署名';
+    const meta = $('#boardMeta');
+    if (meta) {
+      meta.textContent = [
+        s.likes ? `♥ ${s.likes}` : '',
+        s.ratingCount ? `★ ${formatAvg(s.ratingAvg)}` : '',
+        work.uploaded ? '投稿' : '',
+      ].filter(Boolean).join(' · ');
+    }
 
     preloadNeighbours();
   }
