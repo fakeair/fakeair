@@ -420,7 +420,9 @@
   /** 统一处理 store 异常：属于「后端不可用」就降级，否则只弹一次提示 */
   function handleStoreError(err) {
     const msg = (err && err.message) ? err.message : '网络或配置问题';
-    const fatal = err && (err.status === 401 || err.status === 403 || err.status === 404 || err.status === undefined);
+    // 只把「配置 / 权限 / 端点」类错误当成不可用；
+    // 暂时性网络抖动、频率限制（429）只提示，不影响继续操作。
+    const fatal = err && (err.status === 401 || err.status === 403 || err.status === 404);
     if (fatal && store && store.mode === 'shared') degrade(msg);
     else flashError(err);
   }

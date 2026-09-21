@@ -1,5 +1,13 @@
 # Supabase 互动后端接入指南
 
+> **本项目的实现已经写好**：共享存储的代码在 `assets/js/store.js`（`SharedStore` 类），
+> 存储开关在 `data/config.js`。你**只需要建库 + 填两个值**，前端代码不用动。
+>
+> 本文档第 3 节列出的原生 fetch 写法是**接口参考**（说明每个操作对应的准确请求），
+> 不是让你照抄进项目 —— 项目里已经按这套协议实现好了。
+> 唯一区别：项目里的全局变量是 `window.GALLERY_BACKEND`（不是 `window.LUKA_SUPABASE`），
+> 字段是 `{ url, anonKey }`。
+
 给巡音流歌画廊站（纯静态 / GitHub Pages）加**点赞、收藏、五星评分、文字短评**。
 访客无账号，靠浏览器生成的 `visitor_id` 去重。
 
@@ -107,26 +115,29 @@ REST 端点就是它加 `/rest/v1/`。
 
 ### 2.4 存进前端
 
-在 `assets/js/` 里新建一个配置文件（比如 `assets/js/supabase-config.js`），内容：
+本项目**已经内置**了共享存储的开关，就在 **`data/config.js`** 里（这个文件已经建好，默认是空的）：
 
 ```js
-// 这两个值会被公开在浏览器里，这是设计如此 —— 安全性靠数据库的 RLS + 约束。
-// 绝不要把 sb_secret_... / service_role 放进这里。
-window.LUKA_SUPABASE = {
-  url: 'https://你的项目ID.supabase.co',
-  key: 'sb_publishable_你的密钥',
+window.GALLERY_BACKEND = {
+  url: '',       // ← 填 Project URL，例如 https://abcdefghijklmn.supabase.co
+  anonKey: '',   // ← 填 Publishable key（sb_publishable_...）
 };
 ```
 
-在 `index.html` 里、`main.js` **之前**引入：
+填好保存、刷新页面，页面会自动从「本机存储」切到「共享存储」（顶部的青色提示会消失）。
+**代码一行都不用改。**
 
-```html
-<script src="assets/js/supabase-config.js"></script>
-<script src="assets/js/main.js"></script>
-```
-
-> 如果项目是公开仓库（你现在就是），这两个值会进 Git 历史。这没问题 ——
-> publishable 密钥本来就是给前端用的。**唯一不能提交的是 secret key。**
+> 变量名叫 `anonKey` 是沿用习惯叫法，实际填**新的 publishable key** 最好
+> （旧的 `anon` JWT 也能用，但 2026 年底弃用）。
+>
+> 这两个值会被公开在浏览器里，这是设计如此 —— 安全性靠数据库的 RLS + 约束。
+> **绝对不要**把 `sb_secret_...` / `service_role` 填进这里，那等于把管理员钥匙交给所有人。
+>
+> 本项目是公开仓库，这两个值会进 Git 历史 —— **这没问题**，
+> publishable 密钥本来就是给前端用的，公开是预期行为。
+>
+> 想让页面在检查前先自己确认「本机存储还是共享存储」：看顶部有没有那条青色提示，
+> 有就是本机存储（没配置或配置没生效）。
 
 ### 2.5（可选）开启前置钩子
 
