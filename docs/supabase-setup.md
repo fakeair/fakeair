@@ -11,15 +11,39 @@
 给巡音流歌画廊站（纯静态 / GitHub Pages）加**点赞、收藏、五星评分、文字短评**。
 访客无账号，靠浏览器生成的 `visitor_id` 去重。
 
-- SQL 全文：[`supabase-schema.sql`](./supabase-schema.sql) ← 直接粘到 SQL Editor 执行
-- 本文档：配置步骤、前端调用、安全边界、自检清单
+## 你要复制的是哪个文件
+
+建库用的 SQL 在**你自己电脑上**：
+
+```
+D:\WANZHAN\docs\supabase-schema-min.sql   ← 推荐，11KB/364 行，无注释无危险段
+D:\WANZHAN\docs\supabase-schema.sql       ← 完整版，22KB/569 行，带详细说明
+```
+
+它们也在 GitHub 仓库里（同一份文件）：
+<https://github.com/fakeair/fakeair/tree/main/docs>
+
+**Supabase 和你这个 GitHub 仓库没有任何关系** —— 建库是在 Supabase 后台做的，
+只是需要把这份 SQL 粘过去。看到「项目里的文件」时，指的都是本地这个路径。
+
+- 建库执行：[`supabase-schema-min.sql`](./supabase-schema-min.sql)
+- 通读逻辑 / 站长速查 / 安全边界：[`supabase-schema.sql`](./supabase-schema.sql)
+- 本文档：配置步骤、前端调用、自检清单、应急手册
+
+## 三句话说完怎么做
+
+1. Supabase 建个项目（Free）
+2. 把 `docs/supabase-schema-min.sql` 全文粘进 **SQL Editor** 跑一次
+3. 把 **Project URL** 和 **Publishable key** 填进 `data/config.js`
+
+完成后刷新画廊页面，顶部那条青色「本机存储」提示会消失 —— 那就是生效了。
 
 > **本文档的 API 细节已对照官方文档核实**（2026-09），来源在文末「参考来源」。
 > 特别提示两处容易踩的过期信息：
 > 1. Supabase 正在**弃用** `anon` / `service_role` 密钥，新密钥是
 >    `sb_publishable_…` / `sb_secret_…`，**且不是 JWT**（不再以 `eyJ` 开头）。
 > 2. Dashboard 里**已经没有 `Settings > API` 这个页面**了，密钥统一在
->    **`Settings > API Keys`**，或项目顶部 **Connect** 对话框。
+>    **`Settings → API Keys`**，或项目顶部 **Connect** 对话框。
 
 ---
 
@@ -82,12 +106,80 @@
 
 ### 2.2 建表
 
-1. 左侧栏 → **SQL Editor** → **New query**
-2. 打开 `docs/supabase-schema.sql`，**全部复制**，粘贴进去
-3. 点 **Run**（或 `Ctrl+Enter`）
-4. 期望结果：`Success. No rows returned`，没有红色报错
+**先搞清楚要复制哪个文件**（这是最容易卡住的一步）：
 
-> 如果报「已存在」，说明你之前跑过一次。要彻底重来请先跑 SQL 文件末尾的「清理」段。
+`docs/supabase-schema.sql` 在**你自己的电脑上**，路径是：
+
+```
+D:\WANZHAN\docs\supabase-schema.sql
+```
+
+它同时在 GitHub 仓库里（<https://github.com/fakeair/fakeair/blob/main/docs/supabase-schema.sql>），
+那是同一份文件的网页版。**两种都能复制，但推荐用本地文件。**
+
+> Supabase 是另一个网站，和你这个 GitHub 仓库**没有任何关系**。
+> 建库这一步在 Supabase 后台做，只是需要把这份 SQL 粘过去而已。
+
+**用哪个文件：**
+
+| 文件 | 体积 | 建议 |
+| --- | --- | --- |
+| `docs/supabase-schema-min.sql` | 11 KB / 364 行 | ✅ **推荐**。自动去掉了全部注释，也没有「清理（危险）」段，粘贴不会误触 |
+| `docs/supabase-schema.sql` | 22 KB / 569 行 | 带详细中文说明、站长速查 SQL、安全边界。想通读逻辑时看这份 |
+
+（`-min` 版由 `node tools/make-schema-min.cjs` 从完整版自动生成，两者内容等价。）
+
+**操作：**
+
+1. 左侧栏 → **SQL Editor** → **New query**
+2. 用记事本打开 `D:\WANZHAN\docs\supabase-schema-min.sql`（右键 → 打开方式 → 记事本），
+   `Ctrl+A` 全选 → `Ctrl+C` 复制
+3. 粘进 SQL Editor 的输入框
+4. 点 **Run**（或 `Ctrl+Enter`）
+5. 期望结果：**`Success. No rows returned`**，没有红色报错
+
+> 如果报「已存在」，说明你之前跑过一次 —— 没关系，脚本里用了
+> `create table if not exists` 之类写法的地方能重复执行；真要从头再来，
+> 才需要跑**完整版**文件末尾的「清理（危险）」段。
+
+### 2.2.1 立刻确认建好了（推荐，30 秒）
+
+把下面这段粘进 SQL Editor 跑一次，它会列出所有对象：
+
+```sql
+select '表' as 类型, tablename as 名称 from pg_tables where schemaname = 'public'
+union all
+select '视图', viewname from pg_views where schemaname = 'public'
+order by 1, 2;
+```
+
+应该看到 **7 行**：
+
+| 类型 | 名称 |
+| --- | --- |
+| 表 | `luka_app_settings` |
+| 表 | `luka_comments` |
+| 表 | `luka_favorites` |
+| 表 | `luka_likes` |
+| 表 | `luka_ratings` |
+| 视图 | `luka_my_state` |
+| 视图 | `luka_work_stats` |
+
+再跑一段确认**行级安全（RLS）真的开着**（这是安全的关键）：
+
+```sql
+select tablename, rowsecurity from pg_tables
+where schemaname = 'public' and tablename like 'luka_%'
+order by tablename;
+```
+
+四张业务表（`luka_likes` / `luka_favorites` / `luka_ratings` / `luka_comments`）
+的 `rowsecurity` 必须都是 **true**。`luka_app_settings` 也是 true。
+**如果有 false，说明 SQL 没跑完整，别继续往下配。**
+
+> 补充：Supabase 新建项目现在是 **PostgreSQL 17**，本项目用的
+> `security_invoker = true`（视图）需要 15+，所以不会有兼容问题。
+> 想在 SQL Editor 里确认版本：`show server_version;`
 
 ### 2.3 拿到 Project URL 和密钥
 

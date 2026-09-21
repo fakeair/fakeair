@@ -29,9 +29,10 @@
 想让所有人共享同一份数据（真正的公开点赞和评论），按下面配一遍即可，
 **代码不用改**，填两行配置就自动切换：
 
-- **[docs/supabase-schema.sql](docs/supabase-schema.sql)** —— 建表 SQL，粘到 Supabase SQL Editor 一次跑通
-- **[docs/supabase-setup.md](docs/supabase-setup.md)** —— 配置步骤、自检清单、错误对照表
-- 配好后把 `Project URL` 和 `anon public key` 填进 **[data/config.js](data/config.js)**
+- **[docs/supabase-schema-min.sql](docs/supabase-schema-min.sql)** —— **建库就复制这份**（11KB，无注释，粘进 SQL Editor 直接跑）
+- **[docs/supabase-schema.sql](docs/supabase-schema.sql)** —— 完整版（22KB），带详细说明、站长速查 SQL；`-min` 版由它自动生成
+- **[docs/supabase-setup.md](docs/supabase-setup.md)** —— 配置步骤、自检清单、错误对照表、安全边界、应急手册
+- 配好后把 `Project URL` 和 `Publishable key` 填进 **[data/config.js](data/config.js)**
 
 > **安全边界（重要）**：共享模式下 anon key 是公开的，匿名访客标识由前端生成。
 > 数据库约束能防住重复点赞、超长评论、改删别人的评论；
