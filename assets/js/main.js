@@ -38,6 +38,8 @@
   const boardShuffle = $('#boardShuffle');
   const boardAuto = $('#boardAuto');
   const boardLock = $('#boardLock');
+  const boardPrev = $('#boardPrev');
+  const boardNext = $('#boardNext');
 
   const lb = $('#lightbox');
   const lbImg = $('#lbImg');
@@ -80,6 +82,7 @@
   let stats = {};     // { workId: { likes, liked, favorites, ratingAvg, ... } }
   let degraded = false;
   let uploadsReady = false; // 投稿功能是否可用（表建好且读得到）
+  let renderedOnce = false; // 是否已经完成首次渲染
 
   /* ---------- 工具 ---------- */
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => (
@@ -166,6 +169,19 @@
     boardLock.title = on ? '当前主视觉已锁定，点击解锁' : '锁住当前主视觉，刷新也不变';
     boardShuffle.disabled = on;
     boardShuffle.title = on ? '主视觉已锁定，先解锁才能换' : '';
+    setArrowUI();
+  }
+
+  /** 箭头状态：锁定、或可切换的图不足 2 张时禁用 */
+  function setArrowUI() {
+    const few = cyclePool().length < 2;
+    const off = !!readLock() || few;
+    boardPrev.disabled = off;
+    boardNext.disabled = off;
+    const tip = readLock() ? '主视觉已锁定，先解锁才能切换'
+      : (few ? '当前筛选只有 1 张，没有可切换的' : '');
+    boardPrev.title = tip || '上一张';
+    boardNext.title = tip || '下一张';
   }
 
   function setAutoUI() {
@@ -222,6 +238,33 @@
       // 锁定后停止轮播，避免「锁了还在换」的矛盾状态
       stopAuto();
     }
+  }
+
+  /**
+   * 左右箭头：在当前筛选范围内前后切换主视觉。
+   * 手动切过之后把轮播计时器重新计时，否则可能刚点完立刻又被自动换掉。
+   */
+  function stepBoard(delta) {
+    if (readLock()) return;
+    const pool = cyclePool();
+    if (pool.length < 2) return;
+    const i = pool.findIndex((w) => String(w.id) === String(state.boardId));
+    // 当前主视觉不在筛选结果里时，直接跳到第一张，
+    // 否则会「跳过第一张」直接落到第二张。
+    const next = i < 0 ? 0 : ((i + delta) % pool.length + pool.length) % pool.length;
+    cycleIndex = next;
+    fillBoard(pool, pool[next].id);
+    if (autoOn) startAuto();  // 重新计时
+  }
+
+  /** 筛选变化后，如果当前主视觉不在结果里，就跟着换成结果里的第一张 */
+  function syncBoardWithFilter() {
+    if (readLock()) return;
+    const pool = cyclePool();
+    if (!pool.length) return;
+    if (pool.some((w) => String(w.id) === String(state.boardId))) return;
+    cycleIndex = 0;
+    fillBoard(pool, pool[0].id);
   }
 
   const formatAvg = (avg) => (avg > 0 ? avg.toFixed(1) : '—');
@@ -452,6 +495,11 @@
     countEl.textContent = filtered ? `${state.view.length} / ${total} 张` : `共 ${total} 张`;
 
     if (!lb.hidden) close();
+    // 筛选结果里没有当前主视觉时跟着换一张。
+    // 初始渲染不做（那时主视觉还没定，boot 里会单独处理）。
+    if (renderedOnce && filtered) syncBoardWithFilter();
+    renderedOnce = true;
+    setArrowUI();
   }
 
   /* ---------- 互动数据 ---------- */
@@ -716,6 +764,8 @@
 
   boardAuto.addEventListener('click', toggleAuto);
   boardLock.addEventListener('click', toggleLock);
+  boardPrev.addEventListener('click', () => stepBoard(-1));
+  boardNext.addEventListener('click', () => stepBoard(1));
 
   // 切回标签页时重新对齐轮播序号，避免回来就立刻跳一张
   document.addEventListener('visibilitychange', () => {

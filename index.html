@@ -62,10 +62,14 @@
     </div>
 
     <figure class="board-figure">
-      <a id="boardLink" href="#gallery" data-reveal="board" aria-label="查看这张作品">
-        <img id="boardImg" alt="" decoding="async">
-        <span class="board-loading" id="boardLoading" aria-hidden="true"></span>
-      </a>
+      <div class="board-frame">
+        <a id="boardLink" href="#gallery" data-reveal="board" aria-label="查看这张作品">
+          <img id="boardImg" alt="" decoding="async">
+          <span class="board-loading" id="boardLoading" aria-hidden="true"></span>
+        </a>
+        <button type="button" class="board-arrow board-prev" id="boardPrev" aria-label="上一张主视觉 (←)">‹</button>
+        <button type="button" class="board-arrow board-next" id="boardNext" aria-label="下一张主视觉 (→)">›</button>
+      </div>
       <figcaption>
         <span id="boardTitle">—</span>
         <span class="board-author" id="boardAuthor"></span>
