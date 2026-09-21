@@ -36,6 +36,8 @@
   const boardAuthor = $('#boardAuthor');
   const boardLoading = $('#boardLoading');
   const boardShuffle = $('#boardShuffle');
+  const boardAuto = $('#boardAuto');
+  const boardLock = $('#boardLock');
 
   const lb = $('#lightbox');
   const lbImg = $('#lbImg');
@@ -127,6 +129,100 @@
     likes: 0, favorites: 0, ratingCount: 0, ratingAvg: 0, reviewCount: 0,
     liked: false, favorited: false, myRating: 0,
   };
+
+  /* ---------- 主视觉：自动轮播 与 锁定 ---------- */
+
+  const LOCK_KEY = 'luka-gallery:board-lock';
+  const AUTO_MS = 7000;           // 每 7 秒换一张：再快就一直占带宽了
+  const prefersReduced = window.matchMedia
+    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  let locked = false;             // 锁定：刷新后仍显示同一张
+  let autoOn = false;             // 自动轮播开关
+  let autoTimer = 0;
+  let cycleIndex = 0;
+
+  function readLock() {
+    try {
+      const raw = localStorage.getItem(LOCK_KEY);
+      if (!raw) return null;
+      const saved = JSON.parse(raw);
+      return (saved && saved.id) ? saved : null;
+    } catch { return null; }
+  }
+
+  function writeLock(work) {
+    try {
+      if (work) localStorage.setItem(LOCK_KEY, JSON.stringify({ id: work.id, at: Date.now() }));
+      else localStorage.removeItem(LOCK_KEY);
+    } catch { /* 无痕模式等，忽略 */ }
+  }
+
+  function setLockUI() {
+    const on = !!readLock();
+    boardLock.setAttribute('aria-pressed', String(on));
+    boardLock.querySelector('.toggle-icon').textContent = on ? '🔒' : '🔓';
+    boardLock.querySelector('.toggle-text').textContent = on ? '已锁定' : '锁定主视觉';
+    boardLock.title = on ? '当前主视觉已锁定，点击解锁' : '锁住当前主视觉，刷新也不变';
+    boardShuffle.disabled = on;
+    boardShuffle.title = on ? '主视觉已锁定，先解锁才能换' : '';
+  }
+
+  function setAutoUI() {
+    boardAuto.setAttribute('aria-pressed', String(autoOn));
+    boardAuto.querySelector('.toggle-icon').textContent = autoOn ? '❚❚' : '▶';
+    boardAuto.querySelector('.toggle-text').textContent = autoOn ? '轮播中' : '自动轮播';
+    boardAuto.title = autoOn ? '点击暂停自动轮播' : `每 ${AUTO_MS / 1000} 秒自动换一张`;
+  }
+
+  /** 轮播取图顺序：跟随当前筛选结果，让「看立绘时只轮播立绘」也成立 */
+  function cyclePool() {
+    return state.view.length ? state.view : WORKS;
+  }
+
+  function startAuto() {
+    stopAuto();
+    if (locked || !WORKS.length) return;
+    const pool = cyclePool();
+    if (pool.length < 2) return;
+    const cur = pool.findIndex((w) => String(w.id) === String(state.boardId));
+    cycleIndex = cur >= 0 ? cur : 0;
+    autoOn = true;
+    setAutoUI();
+    autoTimer = setInterval(() => {
+      // 灯箱打开时不打扰；标签页在后台也不换（省流量、也避免用户回来看不到变化）
+      if (!lb.hidden || document.hidden || locked) return;
+      const list = cyclePool();
+      if (list.length < 2) return;
+      cycleIndex = (cycleIndex + 1) % list.length;
+      fillBoard(list, list[cycleIndex].id);
+    }, AUTO_MS);
+  }
+
+  function stopAuto() {
+    if (autoTimer) { clearInterval(autoTimer); autoTimer = 0; }
+    autoOn = false;
+    setAutoUI();
+  }
+
+  function toggleAuto() {
+    if (autoOn) stopAuto();
+    else startAuto();
+  }
+
+  function toggleLock() {
+    if (readLock()) {
+      writeLock(null);
+      setLockUI();
+    } else {
+      const work = WORKS.find((w) => String(w.id) === String(state.boardId));
+      if (!work) return;
+      writeLock(work);
+      setLockUI();
+      // 锁定后停止轮播，避免「锁了还在换」的矛盾状态
+      stopAuto();
+    }
+  }
 
   const formatAvg = (avg) => (avg > 0 ? avg.toFixed(1) : '—');
 
@@ -607,11 +703,26 @@
   });
 
   boardShuffle.addEventListener('click', () => {
+    if (readLock()) return;                 // 锁定状态下不允许换
     const pool = state.view.length ? state.view : WORKS;
     if (pool.length < 2) return;
     let next = state.boardId;
-    while (next === state.boardId) next = pool[Math.floor(Math.random() * pool.length)].id;
+    let guard = 0;
+    while (next === state.boardId && guard++ < 50) {
+      next = pool[Math.floor(Math.random() * pool.length)].id;
+    }
     fillBoard(pool, next);
+  });
+
+  boardAuto.addEventListener('click', toggleAuto);
+  boardLock.addEventListener('click', toggleLock);
+
+  // 切回标签页时重新对齐轮播序号，避免回来就立刻跳一张
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden || !autoOn) return;
+    const pool = cyclePool();
+    const cur = pool.findIndex((w) => String(w.id) === String(state.boardId));
+    cycleIndex = cur >= 0 ? cur : 0;
   });
 
   boardLink.addEventListener('click', (e) => {
@@ -823,7 +934,18 @@
     buildChips();
     render();
     updateStats();
-    fillBoard(WORKS);
+
+    // 有锁定记录就显示锁定的那张，否则按默认规则挑
+    const saved = readLock();
+    const lockedWork = saved && WORKS.find((w) => String(w.id) === String(saved.id));
+    fillBoard(WORKS, lockedWork ? lockedWork.id : null);
+    if (!lockedWork && saved) writeLock(null); // 锁定的图已不存在（比如被下架），清掉记录
+    setLockUI();
+    setAutoUI();
+
+    // 用户明确要求减少动画时不自动播放；其余情况默认开启
+    if (!prefersReduced) startAuto();
+
     if (usesWebp()) checkWebpSupport();
 
     function openFromHash() {

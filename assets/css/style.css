@@ -168,6 +168,34 @@ main { max-width: var(--maxw); margin: 0 auto; padding: 0 24px 80px; }
 
 .board-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 32px; }
 
+/* 主视觉：自动轮播 / 锁定 */
+.board-toggles { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+
+.toggle {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 7px 14px; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--line); background: rgba(255, 255, 255, 0.03);
+  color: var(--text-dim); font: inherit; font-size: 12.5px;
+  transition: all 0.2s var(--ease);
+}
+.toggle:hover { color: var(--text); border-color: var(--line-strong); }
+.toggle-icon { font-size: 11px; line-height: 1; }
+
+/* 轮播中 */
+#boardAuto[aria-pressed="true"] {
+  color: var(--cyan); border-color: rgba(92, 225, 230, 0.4);
+  background: rgba(92, 225, 230, 0.1);
+}
+/* 已锁定 */
+#boardLock[aria-pressed="true"] {
+  color: #ffd166; border-color: rgba(255, 209, 102, 0.42);
+  background: rgba(255, 209, 102, 0.1);
+}
+
+/* 锁定时「换一张主视觉」不可用，只把那一颗变淡，不影响旁边的按钮 */
+.btn:disabled { opacity: 0.45; cursor: not-allowed; filter: none; transform: none; }
+.btn-ghost:disabled:hover { border-color: var(--line-strong); color: var(--text); }
+
 /* 主视觉图 */
 .board-figure { margin: 0; }
 .board-figure > a {
