@@ -204,12 +204,15 @@ main { max-width: var(--maxw); margin: 0 auto; padding: 0 24px 80px; }
   border: 1px solid var(--line-strong);
   background: linear-gradient(150deg, var(--surface-2), var(--bg-soft));
   box-shadow: 0 40px 80px -34px rgba(255, 111, 165, 0.42), var(--shadow);
-  aspect-ratio: 3 / 4;
+  /* 宽高比按当前作品动态设置，所以用 contain 不裁图 */
+  aspect-ratio: var(--board-ar, 3 / 4);
   transition: transform 0.4s var(--ease), border-color 0.3s;
 }
 .board-figure > a:hover { transform: translateY(-4px); border-color: rgba(255, 111, 165, 0.55); }
 
-.board-figure img { width: 100%; height: 100%; object-fit: cover; }
+/* 主视觉不做淡入：切换必须立刻可见。
+   （淡入依赖 animation，动画时钟被暂停时会白屏，之前踩过这个坑） */
+.board-figure img { width: 100%; height: 100%; object-fit: contain; background: #0c0b11; }
 
 .board-loading {
   position: absolute; inset: 0;

@@ -83,6 +83,8 @@
   let degraded = false;
   let uploadsReady = false; // 投稿功能是否可用（表建好且读得到）
   let renderedOnce = false; // 是否已经完成首次渲染
+  let lastUpgrade = null;   // 最近一次主视觉大图升级的结果（测试用）
+  let activeBlob = null;    // 当前主视觉大图的 blob URL，切换时要释放，避免内存泄漏
 
   /* ---------- 工具 ---------- */
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => (
@@ -298,20 +300,87 @@
     if (!work) return;
     state.boardId = work.id;
 
+    // 每张图宽高比不同，按各自比例调整图框，避免 cover 裁掉两侧
+    const ar = (Number(work.w) > 0 && Number(work.h) > 0) ? `${work.w} / ${work.h}` : '3 / 4';
+    boardImg.closest('a').style.setProperty('--board-ar', ar);
+
+    // 主视觉不淡入：直接出现，切换才「跟手」。
+    // （淡入是靠 CSS animation 做的，暂停时钟时还可能白屏，之前踩过这个坑）
     boardImg.classList.remove('loaded');
-    boardLoading.hidden = false;
+    boardLoading.hidden = true;
+
     boardImg.alt = `${work.title || '巡音流歌'} — 巡音流歌图片`;
     const token = String(work.id);
     boardImg.dataset.token = token;
-    const done = () => {
-      if (boardImg.dataset.token !== token) return;
-      boardLoading.hidden = true;
-      reveal(boardImg);
+
+    /**
+     * 分两级加载，解决「切换迟缓」：
+     *   1. 先上 thumb（约 78KB，列表首屏已经下过、基本都在 HTTP 缓存里）→ 几乎瞬间可见
+     *   2. 再后台下 hero（约 251KB），下完且解码完才替换 → 全程不出现空白
+     *
+     * 注意：不要用另一个 <img> 去「预热」同一个 URL —— 浏览器会把同一张图
+     * 在多个 img 上的加载视为同一资源，隐藏的那个 img 加载被推迟时，
+     * 会把这里的 upgrade 请求一起取消，导致永远停在缩略图上。
+     * 用 new Image() 持有引用即可，它下完就自然进了 HTTP 缓存。
+     */
+    const heroSrc = work.hero || work.src || work.thumb || '';
+    const thumbSrc = work.thumb || work.src || '';
+    boardImg.src = thumbSrc;
+    // 上一张的大图 blob 用不到了，及时释放
+    if (activeBlob) { try { URL.revokeObjectURL(activeBlob); } catch { /* 忽略 */ } activeBlob = null; }
+
+    if (!heroSrc || heroSrc === thumbSrc) { preloadNeighbours(); return; }
+
+    const upgrade = new Image();
+    let done = false;
+    const finish = (applied, reason) => {
+      if (done) return;
+      done = true;
+      lastUpgrade = { id: work.id, applied, reason: reason || '' };
+      try {
+        document.dispatchEvent(new CustomEvent('gallery:board-upgrade', { detail: lastUpgrade }));
+      } catch { /* 忽略 */ }
+      preloadNeighbours();
     };
-    boardImg.onload = done;
-    boardImg.onerror = done;
-    boardImg.src = work.hero || work.thumb || work.src || '';
-    if (boardImg.complete && boardImg.naturalWidth) done();
+    const apply = (url) => {
+      if (done) return;
+      if (boardImg.dataset.token !== token) { finish(false, 'token-changed'); return; }
+      boardImg.src = url;
+      finish(true, 'ok');
+    };
+
+    /**
+     * 用 fetch 而不是 <img> 的 load 事件。
+     *
+     * 原因：同一张图如果已经被别的 Image 请求过（例如相邻预热），浏览器会复用
+     * 那次请求，新 Image 的 load 事件在某些情况下**不会触发** —— 实测就卡在这里，
+     * 大图明明下完了却永远不替换。
+     * fetch 拿到的数据直接转成 blob URL 交给 img，数据已在内存里，
+     * 替换必然瞬时完成，不依赖任何加载事件。
+     */
+    const fallbackToImage = () => {
+      // fetch 不可用（极旧浏览器）时退回 Image
+      upgrade.addEventListener('load', () => { if (upgrade.naturalWidth) apply(heroSrc); else finish(false, 'zero-width'); }, { once: true });
+      upgrade.addEventListener('error', () => finish(false, 'error'), { once: true });
+      upgrade.src = heroSrc;
+    };
+
+    if (typeof fetch === 'function' && typeof URL !== 'undefined' && URL.createObjectURL) {
+      fetch(heroSrc, { credentials: 'omit' })
+        .then((res) => (res.ok ? res.blob() : Promise.reject(new Error('HTTP ' + res.status))))
+        .then((blob) => { activeBlob = URL.createObjectURL(blob); apply(activeBlob); })
+        .catch(() => {
+          // 本机用 file:// 打开时 fetch 会被拦（CORS），退回 Image 方式
+          finish(false, 'fetch-failed');
+          fallbackToImage();
+          done = false;   // 允许退回方案继续走 finish
+        });
+    } else {
+      fallbackToImage();
+    }
+
+    // 兜底：万一都没成，别让界面永久停在缩略图
+    setTimeout(() => { if (!done) finish(false, 'timeout'); }, 9000);
 
     boardLink.dataset.id = work.id;
     boardLink.setAttribute('aria-label', `查看大图：${work.title || '未命名'}`);
@@ -322,6 +391,41 @@
       `♥ ${s.likes}`,
       s.ratingCount ? `★ ${formatAvg(s.ratingAvg)}` : '',
     ].filter(Boolean).join(' · ');
+
+    preloadNeighbours();
+  }
+
+  /* ---------- 预热相邻主视觉，让点击/轮播「跟手」 ---------- */
+
+  const preloaded = new Map();
+  let preloadTimer = 0;
+
+  function preloadNeighbours() {
+    if (preloadTimer) clearTimeout(preloadTimer);
+    preloadTimer = setTimeout(() => {
+      const pool = cyclePool();
+      if (pool.length < 2) return;
+      const i = pool.findIndex((w) => String(w.id) === String(state.boardId));
+      if (i < 0) return;
+      // 当前这张优先级最低（已经在加载了），先热前后各一张
+      for (const d of [1, 2, -1]) {
+        const w = pool[((i + d) % pool.length + pool.length) % pool.length];
+        warm(w);
+      }
+    }, 1200);
+  }
+
+  function warm(work) {
+    const url = work && (work.hero || work.src);
+    if (!url || preloaded.has(url)) return;
+    const im = new Image();
+    im.decoding = 'async';
+    im.src = url;
+    preloaded.set(url, im);
+    if (preloaded.size > 12) {
+      const oldest = preloaded.keys().next().value;
+      preloaded.delete(oldest);
+    }
   }
 
   function updateStats() {
